@@ -1,6 +1,6 @@
 package com.alexkong1.github_search.data.model
 
-data class SearchResult constructor(
+data class SearchUserResult constructor(
     val totalCount: Int,
     val incompleteResult: Boolean,
     val items: Array<User>
@@ -10,7 +10,7 @@ data class SearchResult constructor(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as SearchResult
+        other as SearchUserResult
 
         if (totalCount != other.totalCount) return false
         if (incompleteResult != other.incompleteResult) return false
