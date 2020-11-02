@@ -2,6 +2,7 @@ package com.alexkong1.github_search
 
 import android.app.Application
 import com.alexkong1.github_search.data.GithubApi
+import retrofit2.Call
 import retrofit2.Retrofit
 
 class GitHubSearchApplication: Application() {
@@ -19,5 +20,9 @@ class GitHubSearchApplication: Application() {
             .build()
 
         service = retrofit.create(GithubApi::class.java)
+    }
+
+    fun getUsers(query: String) {
+        val search = service.searchUser(userName = query)
     }
 }

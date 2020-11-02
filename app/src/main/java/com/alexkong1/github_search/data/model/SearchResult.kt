@@ -3,7 +3,7 @@ package com.alexkong1.github_search.data.model
 data class SearchResult constructor(
     val totalCount: Int,
     val incompleteResult: Boolean,
-    val items: Array<Item>
+    val items: Array<User>
 ){
 
     override fun equals(other: Any?): Boolean {
