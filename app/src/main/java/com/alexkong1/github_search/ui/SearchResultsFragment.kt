@@ -13,17 +13,16 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.alexkong1.github_search.GitHubSearchApplication
 import com.alexkong1.github_search.R
-import com.alexkong1.github_search.data.model.Item
-import com.alexkong1.github_search.data.model.SearchUserResult
 import com.alexkong1.github_search.data.model.User
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import retrofit2.HttpException
 import java.lang.Exception
+import kotlin.coroutines.CoroutineContext
 
 class SearchResultsFragment: Fragment() {
 
     lateinit var recyclerView: RecyclerView
+    var userList: MutableList<User> = mutableListOf()
 
     companion object {
         fun newInstance(): SearchResultsFragment {
@@ -67,7 +66,13 @@ class SearchResultsFragment: Fragment() {
                                 .searchUser(s.toString())
                         Log.e("API CALL", response.toString())
 
-                        updateRecycler(response.items)
+                        if (response.body() != null && response.body()!!.items.isNotEmpty()) {
+                            response.body()!!.items.parallelMap {
+                                getUserData(it)
+                            }
+                        }
+
+                        if (response.body() != null) updateRecycler(userList)
                     } catch (e: Exception) {
                         Log.e("API CALL", "failed $e")
                     }
@@ -85,6 +90,34 @@ class SearchResultsFragment: Fragment() {
             (recyclerView.adapter as SearchResultsAdapter).updateUsers(results)
         } else {
             recyclerView.adapter = SearchResultsAdapter(context, results)
+        }
+    }
+
+    private suspend fun getUserData(user: User) {
+        try {
+            val userData = (context?.applicationContext as GitHubSearchApplication).getRetrofit()
+                    .getUser(user.login)
+
+            userList.add(userData)
+            Log.e("API Call", "${userData.login}: ${userData.publicRepos}")
+        } catch (e: HttpException) {
+            userList.add(user)
+            Log.e("API Call", e.toString())
+        }
+    }
+
+    suspend fun <A, B> Collection<A>.parallelMap(
+            context: CoroutineContext = Dispatchers.Default,
+            block: suspend (A) -> B
+    ): Collection<B> {
+        return map {
+            // Use async to start a coroutine for each item
+            CoroutineScope(context).async(context) {
+                block(it)
+            }
+        }.map {
+            // We now have a map of Deferred<T> so we await() each
+            it.await()
         }
     }
 }
