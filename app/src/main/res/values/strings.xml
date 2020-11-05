@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Github Search</string>
+    <string name="user_repos">Number of public repos: %d</string>
+    <string name="user_repos_error">Error fetching user data</string>
 </resources>

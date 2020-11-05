@@ -29,9 +29,12 @@ class SearchResultsAdapter(private val context: Context?, private var users: Lis
         notifyDataSetChanged()
     }
 
-    class ViewHolder constructor(view: View): RecyclerView.ViewHolder(view) {
+    inner class ViewHolder constructor(view: View): RecyclerView.ViewHolder(view) {
         fun onBind(user: User) {
             itemView.findViewById<TextView>(R.id.tv_search_result_username).text = user.login
+            if (user.publicRepos != null)
+                itemView.findViewById<TextView>(R.id.tv_search_result_public_repos).text =
+                        context?.getString(R.string.user_repos, user.publicRepos)
         }
     }
 }
