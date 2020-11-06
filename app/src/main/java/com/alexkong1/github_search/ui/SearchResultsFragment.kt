@@ -22,7 +22,6 @@ import kotlin.coroutines.CoroutineContext
 class SearchResultsFragment: Fragment() {
 
     lateinit var recyclerView: RecyclerView
-    var userList: MutableList<User> = mutableListOf()
 
     companion object {
         fun newInstance(): SearchResultsFragment {
@@ -59,24 +58,7 @@ class SearchResultsFragment: Fragment() {
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                GlobalScope.launch(Dispatchers.Main) {
-                    try {
-                        val response =
-                            (context?.applicationContext as GitHubSearchApplication).getRetrofit()
-                                .searchUser(s.toString())
-                        Log.e("API CALL", response.toString())
-
-                        if (response.body() != null && response.body()!!.items.isNotEmpty()) {
-                            response.body()!!.items.parallelMap {
-                                getUserData(it)
-                            }
-                        }
-
-                        if (response.body() != null) updateRecycler(userList)
-                    } catch (e: Exception) {
-                        Log.e("API CALL", "failed $e")
-                    }
-                }
+                searchUsers(s.toString())
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -85,7 +67,7 @@ class SearchResultsFragment: Fragment() {
         })
     }
 
-    private fun updateRecycler(results: List<User>) {
+    private fun updateRecycler(results: MutableList<User>) {
         if (recyclerView.adapter != null) {
             (recyclerView.adapter as SearchResultsAdapter).updateUsers(results)
         } else {
@@ -93,16 +75,41 @@ class SearchResultsFragment: Fragment() {
         }
     }
 
-    private suspend fun getUserData(user: User) {
-        try {
-            val userData = (context?.applicationContext as GitHubSearchApplication).getRetrofit()
-                    .getUser(user.login)
+    private fun searchUsers(query: String) {
+        GlobalScope.launch(Dispatchers.Main) {
+            try {
+                val response =
+                    (context?.applicationContext as GitHubSearchApplication).getRetrofit()
+                        .searchUser(query)
+                Log.e("API CALL", response.toString())
 
-            userList.add(userData)
+                var newItems: Collection<User> = listOf()
+
+                if (response.items.isNotEmpty()) {
+                    try {
+                        newItems = response.items.parallelMap {
+                            getUserData(it)
+                        }
+                        Log.e("API CALL", newItems.toString())
+                    } catch (e: HttpException) { }
+                }
+                updateRecycler(newItems.toMutableList())
+            } catch (e: Exception) {
+                Log.e("API CALL", "failed $e")
+            }
+        }
+    }
+
+    private suspend fun getUserData(user: User): User {
+        return try {
+            val userData = (context?.applicationContext as GitHubSearchApplication).getRetrofit()
+                .getUser(user.login)
+
             Log.e("API Call", "${userData.login}: ${userData.publicRepos}")
+            userData
         } catch (e: HttpException) {
-            userList.add(user)
             Log.e("API Call", e.toString())
+            user
         }
     }
 
@@ -112,9 +119,10 @@ class SearchResultsFragment: Fragment() {
     ): Collection<B> {
         return map {
             // Use async to start a coroutine for each item
-            CoroutineScope(context).async(context) {
-                block(it)
-            }
+            CoroutineScope(context)
+                .async(context) {
+                    block(it)
+                }
         }.map {
             // We now have a map of Deferred<T> so we await() each
             it.await()

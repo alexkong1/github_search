@@ -14,7 +14,7 @@ interface GithubApi {
     @GET("search/users")
     suspend fun searchUser(
         @Query("q", encoded = false) userName: String?
-    ): Response<SearchUserResult>
+    ): SearchUserResult
 
     @Headers("Accept: application/vnd.github.v3+json")
     @GET("users/{username}")
