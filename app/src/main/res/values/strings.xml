@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Github Search</string>
+    <string name="user_repos">Number of public repos: %d</string>
+    <string name="user_repos_error">Error fetching user repos</string>
+    <string name="user_repos_error_rate_limit_exceeded">Rate limit exceeded requesting Github User repo data, try again later.</string>
 </resources>

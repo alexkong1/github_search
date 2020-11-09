@@ -21,6 +21,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initUi() {
+
+        supportFragmentManager.beginTransaction()
+                .add(R.id.main_container, SearchResultsFragment.newInstance())
+                .commit()
+        /*
         val searchBox = findViewById<EditText>(R.id.et_search_box)
         searchBox.addTextChangedListener( object : TextWatcher{
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
@@ -30,7 +35,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 GlobalScope.launch(Dispatchers.Main) {
                     try {
-                        var response =
+                        val response =
                             (application as GitHubSearchApplication).getRetrofit()
                                 .searchUser(s.toString())
                         Log.e("API CALL", response.toString())
@@ -44,5 +49,6 @@ class MainActivity : AppCompatActivity() {
                 //TODO("Not yet implemented")
             }
         })
+         */
     }
 }
