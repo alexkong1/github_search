@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -22,6 +23,17 @@ import kotlin.coroutines.CoroutineContext
 class SearchResultsFragment: Fragment() {
 
     lateinit var recyclerView: RecyclerView
+
+    /**
+     * set up runnable to show toast to user when rate limit reached
+     */
+    var rateLimitRunnable = Runnable {
+        Toast.makeText(context,
+                R.string.user_repos_error_rate_limit_exceeded,
+                Toast.LENGTH_LONG)
+                .show()
+    }
+
 
     companion object {
         fun newInstance(): SearchResultsFragment {
@@ -100,6 +112,10 @@ class SearchResultsFragment: Fragment() {
         }
     }
 
+    /**
+     * Call user data API to get
+     */
+    @Throws(HttpException::class)
     private suspend fun getUserData(user: User): User {
         return try {
             val userData = (context?.applicationContext as GitHubSearchApplication).getRetrofit()
@@ -109,23 +125,51 @@ class SearchResultsFragment: Fragment() {
             userData
         } catch (e: HttpException) {
             Log.e("API Call", e.toString())
+            if (e.code() == 403) {
+                activity?.runOnUiThread(rateLimitRunnable)
+            }
             user
+            // TODO: figure out optimal delay when rate limit reached
+            //throw e
         }
     }
 
-    suspend fun <A, B> Collection<A>.parallelMap(
+    /**
+     * concurrent fetch for additional data after initial call
+     */
+    private suspend fun <A, B> Collection<A>.parallelMap(
             context: CoroutineContext = Dispatchers.Default,
             block: suspend (A) -> B
     ): Collection<B> {
         return map {
-            // Use async to start a coroutine for each item
             CoroutineScope(context)
                 .async(context) {
-                    block(it)
+                    retry(times = 3) { block(it) }
                 }
         }.map {
-            // We now have a map of Deferred<T> so we await() each
             it.await()
         }
     }
+
+    /**
+     * retry method to attempt User fetch when rate limit exceeded.
+     */
+    private suspend fun <T> retry(
+            times: Int = Int.MAX_VALUE,
+            initialDelay: Long = 1000,
+            maxDelay: Long = 5000,
+            factor: Double = 2.0,
+            block: suspend () -> T): T
+    {
+        var currentDelay = initialDelay
+        repeat(times - 1) {
+            try {
+                return block()
+            } catch (e: HttpException) { }
+            delay(currentDelay)
+            currentDelay = (currentDelay * factor).toLong().coerceAtMost(maxDelay)
+        }
+        return block()
+    }
+
 }
